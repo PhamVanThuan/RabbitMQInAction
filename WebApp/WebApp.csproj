@@ -39,6 +39,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="log4net">
+      <HintPath>..\packages\log4net.2.0.5\lib\net45-full\log4net.dll</HintPath>
+    </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="RabbitMQ.Client">
       <HintPath>C:\Users\Administrator\Downloads\rabbitmq-dotnet-client-3.6.0-dotnet-4.5\bin\RabbitMQ.Client.dll</HintPath>
