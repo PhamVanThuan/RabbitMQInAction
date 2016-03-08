@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Common;
 using Model;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
@@ -13,36 +14,23 @@ namespace ReportBuilder
 {
     class Program
     {
-        private static IConnection _senderConn;
-        private static IModel _channel;
+        private static IConnection _recvConn;
+        private static IModel _recvChannel;
         //private static IConnection _receiverConn; //同步处理（RPC）时使用
 
         static void Main(string[] args)
         {
-            AsyncSetup();
+            Setup();
 
-            bool isExit = false;
-            while (!isExit)
-            {
-                string line = Console.ReadLine();
-                switch (line)
-                {
-                    case "exit":
-                        isExit = true;
-                        Close();
-                        break;
-                    default:
-                        break;
-                }
-            }
+            Console.WriteLine("Begin to consume message:");
+
+            WaitCommand();
         }
-
-        #region 异步消息处理，客户端发送完消息后不再等待
 
         /// <summary>
         /// 初始化
         /// </summary>
-        private static void AsyncSetup()
+        private static void Setup()
         {
             ConnectionFactory factory = new ConnectionFactory()
             {
@@ -51,18 +39,40 @@ namespace ReportBuilder
                 AutomaticRecoveryEnabled = true
             };
 
-            _senderConn = factory.CreateConnection();
-            //_receiverConn = factory.CreateConnection();
-
-            _channel = _senderConn.CreateModel();
-            _channel.QueueDeclare("reportQueue", false, false, false, null);
-            _channel.BasicQos(0, 10, false);
-            EventingBasicConsumer consumer = new EventingBasicConsumer(_channel);
-
+            _recvConn = factory.CreateConnection();
+            _recvChannel = _recvConn.CreateModel();
+            _recvChannel.QueueDeclare("reportQueue", false, false, false, null);
+            _recvChannel.BasicQos(0, 10, false);
+            EventingBasicConsumer consumer = new EventingBasicConsumer(_recvChannel);
             consumer.Received += consumer_Received;
-
-            _channel.BasicConsume("reportQueue", false, consumer);
+            _recvChannel.BasicConsume("reportQueue", false, consumer);
         }
+
+        /// <summary>
+        /// 等待接收指令
+        /// </summary>
+        private static void WaitCommand()
+        {
+            bool isExit = false;
+
+            while (!isExit)
+            {
+                string line = Console.ReadLine().ToLower().Trim();
+                switch (line)
+                {
+                    case "exit":
+                        Close();
+                        isExit = true;
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            Console.WriteLine("Goodbye!");
+        }
+
+        #region 异步消息处理，客户端发送完消息后不再等待
 
         /// <summary>
         /// 消息接收处理事件，多线程处理消息
@@ -72,18 +82,9 @@ namespace ReportBuilder
         static void consumer_Received(object sender, BasicDeliverEventArgs e)
         {
             byte[] body = e.Body;
-            //bool isSuccess = false;
-
-            string message = Encoding.UTF8.GetString(body);
-            MessageModel msgModel = JsonConvert.DeserializeObject<MessageModel>(message);
-
-            if(msgModel == null)  //解析失败，消息格式不正确，拒绝处理
-            {
-                _channel.BasicReject(e.DeliveryTag, false);
-            }
 
             Task.Run(() => {
-                HandlingMessage(msgModel, e);
+                HandlingMessage(body, e);
             });
 
             //try
@@ -121,12 +122,19 @@ namespace ReportBuilder
         /// </summary>
         /// <param name="msgModel"></param>
         /// <param name="e"></param>
-        private static async void HandlingMessage(MessageModel msgModel, BasicDeliverEventArgs e)
+        private static async void HandlingMessage(byte[] body, BasicDeliverEventArgs e)
         {
             bool isSuccess = false;
-
+            string message = Encoding.UTF8.GetString(body);
+            
             try
             {
+                MessageModel msgModel = JsonConvert.DeserializeObject<MessageModel>(message);
+                if (msgModel == null || !msgModel.IsVlid())  //解析失败或消息格式不正确，拒绝处理
+                {
+                    throw new MessageException("消息解析失败");
+                }
+
                 Random random = new Random();
                 int num = random.Next(0, 4);
 
@@ -143,21 +151,26 @@ namespace ReportBuilder
 
                 isSuccess = true;
             }
+            catch (MessageException msgEx)
+            {
+                Console.WriteLine("Time:" + DateTime.Now.ToString() + " ThreadID:" + Thread.CurrentThread.ManagedThreadId.ToString() + " ERROR:" + msgEx.Message);
+                _recvChannel.BasicReject(e.DeliveryTag, false);  //不再重新分发
+                return;
+            }
             catch (Exception ex)
             {
                 Console.WriteLine("Time:" + DateTime.Now.ToString() + " ThreadID:" + Thread.CurrentThread.ManagedThreadId.ToString() + " ERROR:" + ex.Message);
             }
-            finally
+
+            if (isSuccess)
             {
-                if (isSuccess)
-                {
-                    _channel.BasicAck(e.DeliveryTag, false);  //确认处理成功
-                }
-                else
-                {
-                    _channel.BasicReject(e.DeliveryTag, true); //处理异常，重新分发
-                }
+                _recvChannel.BasicAck(e.DeliveryTag, false);  //确认处理成功
             }
+            else
+            {
+                _recvChannel.BasicReject(e.DeliveryTag, true); //处理失败，重新分发
+            }
+
             
             
         }
@@ -166,14 +179,14 @@ namespace ReportBuilder
 
         static void Close()
         {
-            if(_channel!=null && _channel.IsOpen)
+            if(_recvChannel!=null && _recvChannel.IsOpen)
             {
-                _channel.Close();
+                _recvChannel.Close();
             }
 
-            if(_senderConn!=null && _senderConn.IsOpen)
+            if(_recvConn!=null && _recvConn.IsOpen)
             {
-                _senderConn.Close();
+                _recvConn.Close();
             }
         }
 

@@ -16,5 +16,14 @@ namespace Model
         {
             return Title + "_" + Author + "_" + Enum.GetName(DocType.GetType(), DocType);
         }
+
+        /// <summary>
+        /// 验证消息，Title与Author不能为空
+        /// </summary>
+        /// <returns></returns>
+        public bool IsVlid()
+        {
+            return !string.IsNullOrWhiteSpace(Title) && !string.IsNullOrWhiteSpace(Author);
+        }
     }
 }
