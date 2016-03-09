@@ -14,7 +14,7 @@ namespace Model
 
         public override string ToString()
         {
-            return Title + "_" + Author + "_" + Enum.GetName(DocType.GetType(), DocType);
+            return Title;   //Title + "_" + Author + "_" + Enum.GetName(DocType.GetType(), DocType);
         }
 
         /// <summary>

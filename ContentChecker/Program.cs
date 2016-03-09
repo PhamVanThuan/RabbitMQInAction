@@ -9,6 +9,7 @@ using Model;
 using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using RabbitMQ.Client.Exceptions;
 
 namespace ContentChecker
 {
@@ -17,6 +18,7 @@ namespace ContentChecker
         private static IConnection _recvConn;
         private static IConnection _senderConn;
         private static IModel _recvChannel;
+        private static bool isExit = false;
 
         static void Main(string[] args)
         {
@@ -39,18 +41,28 @@ namespace ContentChecker
                 AutomaticRecoveryEnabled = true
             };
 
-            _recvConn = factory.CreateConnection();
-            _recvChannel = _recvConn.CreateModel();
-            _recvChannel.QueueDeclare("checkQueue", false, false, false, null);
-            _recvChannel.BasicQos(0, 10, false);
-            EventingBasicConsumer consumer = new EventingBasicConsumer(_recvChannel);
-            consumer.Received += consumer_Received;
-            _recvChannel.BasicConsume("checkQueue", false, consumer);
+            try
+            {
+                _recvConn = factory.CreateConnection();
+                _recvChannel = _recvConn.CreateModel();
+                _recvChannel.QueueDeclare("checkQueue", false, false, false, null);
+                _recvChannel.BasicQos(0, 10, false);
+                EventingBasicConsumer consumer = new EventingBasicConsumer(_recvChannel);
+                consumer.Received += consumer_Received;
+                _recvChannel.BasicConsume("checkQueue", false, consumer);
 
-            _senderConn = factory.CreateConnection();
-            var channel = _senderConn.CreateModel();
-            channel.QueueDeclare("reportQueue", false, false, false, null);
-            channel.Close();
+                _senderConn = factory.CreateConnection();
+                var channel = _senderConn.CreateModel();
+                channel.QueueDeclare("reportQueue", false, false, false, null);
+                channel.Close();
+            }
+            catch (BrokerUnreachableException ex)
+            {
+                Console.WriteLine("ERROR: RabbitMQ服务器未启动！");
+                Thread.Sleep(2000);
+                isExit = true;
+            }
+            
         }
 
         /// <summary>
@@ -58,8 +70,6 @@ namespace ContentChecker
         /// </summary>
         private static void WaitCommand()
         {
-            bool isExit = false;
-
             while (!isExit)
             {
                 string line = Console.ReadLine().ToLower().Trim();
@@ -68,6 +78,9 @@ namespace ContentChecker
                     case "exit":
                         Close();
                         isExit = true;
+                        break;
+                    case "clear":
+                        Console.Clear();
                         break;
                     default:
                         break;
@@ -117,28 +130,34 @@ namespace ContentChecker
                 Random random = new Random();
                 int num = random.Next(0, 4);
 
-                //模拟异常
+                //模拟处理失败
                 if (random.Next(0, 11) == 4)
                 {
                     throw new Exception("处理失败", null);
                 }
 
+                //模拟解析失败
+                if (random.Next(0, 11) == 8)
+                {
+                    throw new MessageException("消息解析失败");
+                }
+
                 await Task.Delay(num * 1000);
 
                 //这里简单处理，仅格式化输出消息内容
-                Console.WriteLine("Time:" + DateTime.Now.ToString() + " ThreadID:" + Thread.CurrentThread.ManagedThreadId.ToString() + " MSG:" + msgModel.ToString());
+                Console.WriteLine("Time:" + DateTime.Now.ToString() + " ThreadID:" + Thread.CurrentThread.ManagedThreadId.ToString() + " Used: " + num.ToString() + "s MSG:" + msgModel.ToString());
 
                 isSuccess = true;
             }
             catch (MessageException msgEx)
             {
-                Console.WriteLine("Time:" + DateTime.Now.ToString() + " ThreadID:" + Thread.CurrentThread.ManagedThreadId.ToString() + " ERROR:" + msgEx.Message);
+                Console.WriteLine("Time:" + DateTime.Now.ToString() + " ThreadID:" + Thread.CurrentThread.ManagedThreadId.ToString() + " ERROR:" + msgEx.Message + " MSG:" + message);
                 _recvChannel.BasicReject(e.DeliveryTag, false);  //不再重新分发
                 return;
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Time:" + DateTime.Now.ToString() + " ThreadID:" + Thread.CurrentThread.ManagedThreadId.ToString() + " ERROR:" + ex.Message);
+                Console.WriteLine("Time:" + DateTime.Now.ToString() + " ThreadID:" + Thread.CurrentThread.ManagedThreadId.ToString() + " ERROR:" + ex.Message + " MSG:" + message);
             }
 
             if (isSuccess)
