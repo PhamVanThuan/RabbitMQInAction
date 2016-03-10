@@ -44,6 +44,7 @@ namespace ContentChecker
             try
             {
                 _recvConn = factory.CreateConnection();
+                _recvConn.ConnectionShutdown += ConnectionShutdown;
                 _recvChannel = _recvConn.CreateModel();
                 _recvChannel.QueueDeclare("checkQueue", false, false, false, null);
                 _recvChannel.BasicQos(0, 10, false);
@@ -54,7 +55,7 @@ namespace ContentChecker
                 _senderConn = factory.CreateConnection();
                 var channel = _senderConn.CreateModel();
                 channel.QueueDeclare("reportQueue", false, false, false, null);
-                channel.Close();
+                //channel.Close();  //这里如果关闭channel的话，自动重连的时候无法恢复reportQueue队列，因为reportQueue是使用channel创建的，恢复的时候还要使用channel，必须保持该信道不关闭
             }
             catch (BrokerUnreachableException ex)
             {
@@ -63,6 +64,11 @@ namespace ContentChecker
                 isExit = true;
             }
             
+        }
+
+        static void ConnectionShutdown(object sender, ShutdownEventArgs e)
+        {
+            Console.WriteLine("Connection has already closed.");
         }
 
         /// <summary>
@@ -162,8 +168,16 @@ namespace ContentChecker
 
             if (isSuccess)
             {
-                _senderChannel.BasicPublish("", "reportQueue", null, body);  //发送消息到内容检查队列
-                _recvChannel.BasicAck(e.DeliveryTag, false);  //确认处理成功
+                try
+                {
+                    _senderChannel.BasicPublish("", "reportQueue", null, body);  //发送消息到内容检查队列
+                    _recvChannel.BasicAck(e.DeliveryTag, false);  //确认处理成功
+                }
+                catch (AlreadyClosedException acEx)
+                {
+                    Console.WriteLine("ERROR:连接已关闭");
+                }
+                
             }
             else
             {

@@ -44,6 +44,7 @@ namespace ReportBuilder
             try
             {
                 _recvConn = factory.CreateConnection();
+                _recvConn.ConnectionShutdown += ConnectionShutdown;
                 _recvChannel = _recvConn.CreateModel();
                 _recvChannel.QueueDeclare("reportQueue", false, false, false, null);
                 _recvChannel.BasicQos(0, 10, false);
@@ -58,6 +59,11 @@ namespace ReportBuilder
                 isExit = true;
             }
             
+        }
+
+        static void ConnectionShutdown(object sender, ShutdownEventArgs e)
+        {
+            Console.WriteLine("Connection has already closed.");
         }
 
         /// <summary>
@@ -183,7 +189,15 @@ namespace ReportBuilder
 
             if (isSuccess)
             {
-                _recvChannel.BasicAck(e.DeliveryTag, false);  //确认处理成功
+                try
+                {
+                    _recvChannel.BasicAck(e.DeliveryTag, false);  //确认处理成功
+                }
+                catch (AlreadyClosedException acEx)
+                {
+                    Console.WriteLine("ERROR:连接已关闭");
+                }
+                
             }
             else
             {

@@ -39,13 +39,14 @@ namespace ContentExtract
             ConnectionFactory factory = new ConnectionFactory()
             {
                 HostName = "localhost",
-                TopologyRecoveryEnabled = true,
-                AutomaticRecoveryEnabled = true
+                //TopologyRecoveryEnabled = true,   //默认为true，如果设置为false，则重连后不会重建相关实体，如：exchange,queue,binding
+                AutomaticRecoveryEnabled = true     //自动重连
             };
 
             try
             {
                 _recvConn = factory.CreateConnection();
+                _recvConn.ConnectionShutdown += ConnectionShutdown;
                 _recvChannel = _recvConn.CreateModel();
                 _recvChannel.QueueDeclare("extractQueue", false, false, false, null);
                 _recvChannel.BasicQos(0, 10, false);
@@ -56,7 +57,7 @@ namespace ContentExtract
                 _senderConn = factory.CreateConnection();
                 var channel = _senderConn.CreateModel();
                 channel.QueueDeclare("checkQueue", false, false, false, null);
-                channel.Close();
+                //channel.Close();   //这里如果关闭channel的话，自动重连的时候无法恢复checkQueue队列，因为checkQueue是使用channel创建的，恢复的时候还要使用channel，必须保持该信道不关闭
             }
             catch (BrokerUnreachableException ex)
             {
@@ -65,6 +66,11 @@ namespace ContentExtract
                 isExit = true;
             }
 
+        }
+
+        static void ConnectionShutdown(object sender, ShutdownEventArgs e)
+        {
+            Console.WriteLine("Connection has already closed.");
         }
 
         /// <summary>
@@ -120,10 +126,11 @@ namespace ContentExtract
         {
             bool isSuccess = false;
             string message = Encoding.UTF8.GetString(body);
+            IModel _senderChannel = _senderConn.CreateModel(); //多线程中每个线程使用独立的信道
 
             try
             {
-                IModel _senderChannel = _senderConn.CreateModel(); //多线程中每个线程使用独立的信道
+                
                 MessageModel msgModel = JsonConvert.DeserializeObject<MessageModel>(message);
                 if (msgModel == null || !msgModel.IsVlid())  //解析失败或消息格式不正确，拒绝处理
                 {
@@ -165,8 +172,16 @@ namespace ContentExtract
 
             if (isSuccess)
             {
-                _senderChannel.BasicPublish("", "checkQueue", null, body);  //发送消息到内容检查队列
-                _recvChannel.BasicAck(e.DeliveryTag, false);  //确认处理成功
+                try
+                {
+                    _senderChannel.BasicPublish("", "checkQueue", null, body);  //发送消息到内容检查队列
+                    _recvChannel.BasicAck(e.DeliveryTag, false);  //确认处理成功
+                }
+                catch (AlreadyClosedException acEx)
+                {
+                    Console.WriteLine("ERROR:连接已关闭");
+                }
+                
             }
             else
             {
