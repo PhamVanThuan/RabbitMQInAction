@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PCApp", "PCApp\PCApp.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{4FCCDDEE-F860-4192-BDDB-5D8BC12B09C6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RPCServer", "RPCServer\RPCServer.csproj", "{B3C3D9B1-899F-4D41-B8CD-774355ED8BC6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +59,10 @@ Global
 		{4FCCDDEE-F860-4192-BDDB-5D8BC12B09C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4FCCDDEE-F860-4192-BDDB-5D8BC12B09C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4FCCDDEE-F860-4192-BDDB-5D8BC12B09C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B3C3D9B1-899F-4D41-B8CD-774355ED8BC6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B3C3D9B1-899F-4D41-B8CD-774355ED8BC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B3C3D9B1-899F-4D41-B8CD-774355ED8BC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B3C3D9B1-899F-4D41-B8CD-774355ED8BC6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
