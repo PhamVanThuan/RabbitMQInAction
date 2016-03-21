@@ -30,6 +30,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="RabbitMQ.Client">
+      <HintPath>C:\Users\Administrator\Downloads\rabbitmq-dotnet-client-3.6.0-dotnet-4.5\bin\RabbitMQ.Client.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -39,6 +42,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ConnectionConfig.cs" />
+    <Compile Include="ConnectionPool.cs" />
     <Compile Include="MessageException.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
