@@ -16,6 +16,7 @@ namespace PCApp
         private static IConnection _senderConnection;
         private static IModel _channel;
         private static int _interval = 1; //消息发送间隔
+        private static bool isExit = false;
 
         static void Main(string[] args)
         {
@@ -36,15 +37,27 @@ namespace PCApp
             ConnectionFactory factory = new ConnectionFactory()
             {
                 HostName = "localhost",
+                UserName = "test",
+                Password = "test",
+                VirtualHost = "test",
                 AutomaticRecoveryEnabled = true,
                 TopologyRecoveryEnabled = true
             };
 
-            _senderConnection = factory.CreateConnection();
-            _senderConnection.ConnectionShutdown += _senderConnection_ConnectionShutdown;
+            try
+            {
+                _senderConnection = factory.CreateConnection();
+                _senderConnection.ConnectionShutdown += _senderConnection_ConnectionShutdown;
 
-            _channel = _senderConnection.CreateModel();
-            _channel.QueueDeclare("extractQueue", false, false, false, null);
+                _channel = _senderConnection.CreateModel();
+                _channel.QueueDeclare("extractQueue", false, false, false, null);
+            }
+            catch(BrokerUnreachableException ex)
+            {
+                Console.WriteLine("ERROR: RabbitMQ服务器未启动！");
+                Thread.Sleep(2000);
+                isExit = true;
+            }
         }
 
         static void _senderConnection_ConnectionShutdown(object sender, ShutdownEventArgs e)
@@ -57,7 +70,7 @@ namespace PCApp
         /// </summary>
         private static void WaitCommand()
         {
-            bool isExit = false;
+            //bool isExit = false;
 
             while (!isExit)
             {

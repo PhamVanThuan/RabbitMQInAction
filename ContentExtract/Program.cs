@@ -39,6 +39,9 @@ namespace ContentExtract
             ConnectionFactory factory = new ConnectionFactory()
             {
                 HostName = "localhost",
+                UserName = "test",
+                Password = "test",
+                VirtualHost = "test",
                 //TopologyRecoveryEnabled = true,   //默认为true，如果设置为false，则重连后不会重建相关实体，如：exchange,queue,binding
                 AutomaticRecoveryEnabled = true     //自动重连
             };

@@ -5,6 +5,7 @@ using System.Web;
 using System.Web.Mvc;
 using System.Web.Optimization;
 using System.Web.Routing;
+using Common;
 using RabbitMQ.Client;
 
 namespace WebApp
@@ -37,7 +38,7 @@ namespace WebApp
         /// </summary>
         protected void Application_End()
         {
-            if(_sendConnection!=null && _sendConnection.IsOpen)
+            /*if(_sendConnection!=null && _sendConnection.IsOpen)
             {
                 _sendConnection.Close();
             }
@@ -45,17 +46,31 @@ namespace WebApp
             if(_receiveConnection!=null && _receiveConnection.IsOpen)
             {
                 _receiveConnection.Close();
-            }
+            }*/
+
+            ConnectionPool.Release();
         }
 
         private void ConnectToBroker()
         {
-            var factory = new ConnectionFactory() { HostName = "localhost", AutomaticRecoveryEnabled = true, TopologyRecoveryEnabled = true };
+            /*var factory = new ConnectionFactory() { HostName = "localhost", AutomaticRecoveryEnabled = true, TopologyRecoveryEnabled = true };
             _sendConnection = factory.CreateConnection();
             _receiveConnection = factory.CreateConnection();
 
             _sendConnection.ConnectionShutdown += ConnectionShutdownEventHandler;
-            _receiveConnection.ConnectionShutdown += ConnectionShutdownEventHandler;
+            _receiveConnection.ConnectionShutdown += ConnectionShutdownEventHandler;*/
+
+            ConnectionConfig config = new ConnectionConfig()
+            {
+                HostName = "localhost",
+                UserName = "test",
+                Password = "test",
+                VirtualHost = "test",
+                ShutdownHandler = ConnectionShutdownEventHandler
+            };
+
+            ConnectionPool.Init(config);
+
         }
 
         void ConnectionShutdownEventHandler(object sender, ShutdownEventArgs e)

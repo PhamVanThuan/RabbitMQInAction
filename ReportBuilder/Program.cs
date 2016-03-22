@@ -37,6 +37,9 @@ namespace ReportBuilder
             ConnectionFactory factory = new ConnectionFactory()
             {
                 HostName = "localhost",
+                UserName = "test",
+                Password = "test",
+                VirtualHost = "test",
                 TopologyRecoveryEnabled = true,
                 AutomaticRecoveryEnabled = true
             };

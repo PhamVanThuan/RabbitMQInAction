@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using RabbitMQ.Client;
 
 namespace Common
 {
@@ -68,5 +69,9 @@ namespace Common
         /// timing out.
         /// </summary>
         public TimeSpan ContinuationTimeout { get; set; }
+
+        public EventHandler<ShutdownEventArgs> ShutdownHandler { get; set; }
+
+        public bool AutomaticRecoveryEnabled { get; set; }
     }
 }

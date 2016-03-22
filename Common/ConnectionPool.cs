@@ -19,36 +19,69 @@ namespace Common
 
         public static int _size = 20;  //默认创建20条TCP连接
 
-        public static ConnectionConfig Config;
+        private static ConnectionConfig _config = new ConnectionConfig()
+        {
+            HostName = "localhost",
+            UserName = "guest",
+            Password = "guest",
+            VirtualHost = "/"
+        };
 
         private static IConnection[] _connPool = new IConnection[_size];
 
         private ConnectionPool() { }
 
-        static ConnectionPool()
+        /*static ConnectionPool()
         {
             _factory = new ConnectionFactory()
             {
                 HostName = Config.HostName ?? "localhost",
-                VirtualHost = Config.VirtualHost ?? "/",
-                UserName = Config.UserName ?? "guest",
-                Password = Config.Password ?? "guest",
+                VirtualHost = Config.VirtualHost ?? "test",
+                UserName = Config.UserName ?? "test",
+                Password = Config.Password ?? "test",
                 RequestedHeartbeat = 60,
                 Port = AmqpTcpEndpoint.UseDefaultPort,
                 AutomaticRecoveryEnabled = true,
                 TopologyRecoveryEnabled = true
             };
-        }
+        }*/
 
         /// <summary>
         /// 初始化池对象
         /// </summary>
-        public static void Init()
+        public static void Init(ConnectionConfig config)
         {
-            for (int i = 0; i < _size; i++)
+            _config = config ?? _config;
+
+            _factory = new ConnectionFactory()
             {
-                _connPool[i] = _factory.CreateConnection();
+                HostName = _config.HostName,
+                VirtualHost = _config.VirtualHost,
+                UserName = _config.UserName,
+                Password = _config.Password,
+                AutomaticRecoveryEnabled = _config.AutomaticRecoveryEnabled,
+                RequestedHeartbeat = 60,
+                Port = AmqpTcpEndpoint.UseDefaultPort,
+                TopologyRecoveryEnabled = true
+            };
+
+            try
+            {
+                for (int i = 0; i < _size; i++)
+                {
+                    _connPool[i] = _factory.CreateConnection();
+                    if (_config.ShutdownHandler != null)
+                    {
+                        _connPool[i].ConnectionShutdown += _config.ShutdownHandler;
+                    }
+
+                }
             }
+            catch (Exception ex)
+            {
+                throw;
+            }
+
         }
 
         /// <summary>
@@ -64,6 +97,33 @@ namespace Common
                 computedIndex = (index + 1) % _size;
             } while (_index != Interlocked.CompareExchange(ref _index, computedIndex, index));
             return _connPool[computedIndex];
+        }
+
+        /// <summary>
+        /// 绑定shutdown事件处理程序
+        /// </summary>
+        /// <param name="handler"></param>
+        /*public static void BindShutdownEvent(EventHandler<ShutdownEventArgs> handler)
+        {
+            for (int i = 0; i < _size; i++)
+            {
+                _connPool[i].ConnectionShutdown += handler;
+            }
+        }*/
+
+        /// <summary>
+        /// 释放连接池内的对象
+        /// </summary>
+        public static void Release()
+        {
+            for (int i = 0; i < _size; i++)
+            {
+                if (_connPool[i]!=null && _connPool[i].IsOpen)
+                {
+                    _connPool[i].Close();
+                }
+                _connPool[i] = null;
+            }
         }
     }
 }
