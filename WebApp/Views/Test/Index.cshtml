@@ -10,9 +10,26 @@
 <head>
     <meta name="viewport" content="width=device-width" />
     <title>Index</title>
+    
 </head>
 <body>
-    <div> 
+    <input type="button" name="sendBtn" id="sendBtn" value="send message" />
+    <div id="receiveArea"> 
+        <p>@Model.ReplyMessage</p>
     </div>
+    <script src="~/Scripts/jquery-1.10.2.min.js"></script>
+    <script>
+        $("#sendBtn").on("click", function () {
+            $.ajax({
+                url: "/Test/DoWork",
+                dataType: "html",
+                type: "POST",
+                success: function (result) {
+                    console.log(result);
+                    $("#receiveArea").append($(result));
+                }
+            });
+        });
+    </script>
 </body>
 </html>

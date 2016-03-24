@@ -11,4 +11,10 @@ namespace Common
         public MessageException(string message) : base(message) { }
         public MessageException(string message, Exception innerException) : base(message, innerException) { }
     }
+
+    public class NoRPCConsumeException:Exception
+    {
+        public NoRPCConsumeException(string message) :base(message){ }
+        public NoRPCConsumeException(string message, Exception innerException) : base(message, innerException) { }
+    }
 }

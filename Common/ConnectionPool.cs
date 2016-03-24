@@ -79,7 +79,7 @@ namespace Common
             }
             catch (Exception ex)
             {
-                throw;
+                //throw;
             }
 
         }
@@ -96,7 +96,19 @@ namespace Common
                 index = _index;
                 computedIndex = (index + 1) % _size;
             } while (_index != Interlocked.CompareExchange(ref _index, computedIndex, index));
-            return _connPool[computedIndex];
+
+            //如果在初始化的时候，消息服务器没有启动，那么池中的对象都是null，所以这里需要做个判断
+            if (_connPool[computedIndex] != null)
+            {
+                return _connPool[computedIndex];
+            }
+            else
+            {
+                Interlocked.CompareExchange(ref _connPool[computedIndex],_factory.CreateConnection(),null);
+
+                return _connPool[computedIndex];
+            }
+            
         }
 
         /// <summary>

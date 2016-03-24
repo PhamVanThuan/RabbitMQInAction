@@ -48,6 +48,7 @@ namespace WebApp
                 _receiveConnection.Close();
             }*/
 
+            //释放连接池中的所有对象
             ConnectionPool.Release();
         }
 
@@ -66,6 +67,7 @@ namespace WebApp
                 UserName = "test",
                 Password = "test",
                 VirtualHost = "test",
+                AutomaticRecoveryEnabled = true,
                 ShutdownHandler = ConnectionShutdownEventHandler
             };
 
